@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
+  async rewrites() {
+    // See app/urlset.xml/route.ts for why the sitemap is not a route at /sitemap.xml itself.
+    return [{ source: "/sitemap.xml", destination: "/urlset.xml" }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

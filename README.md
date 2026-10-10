@@ -1,69 +1,68 @@
 # FeetPicss
 
-The feetpicss.com website: a Next.js (App Router) + React site with a built-in blog CMS.
+The feetpicss.com website: a Next.js (App Router) + React site with a built-in blog CMS, deployed on Vercel.
 
 - **Public site** — home page, blog (list, categories, pagination, posts), About, Contact, Privacy Policy, Terms, Affiliate Disclosure, Disclaimer, 404.
 - **Admin panel** (`/admin`) — write, edit, preview, publish and delete blog posts with a rich text editor and image uploads; read contact-form messages.
-- **No database** — posts, uploads and messages are files in the `content/` folder.
+- **Storage** — posts and messages in a Turso (SQLite) database, images in Vercel Blob.
 
-## Run it
+## Production (Vercel)
+
+| What | Where |
+| --- | --- |
+| Hosting | Vercel project `feetpicss` |
+| Database | Turso, resource `feetpicss-db` (Vercel Marketplace integration) |
+| Images | Vercel Blob store `feetpicss-blob` (public) |
+
+Environment variables on the Vercel project:
+
+| Variable | Purpose |
+| --- | --- |
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Set by the Turso integration. When present, posts and messages are stored in Turso. |
+| `BLOB_READ_WRITE_TOKEN` | Set by the Blob store. When present, uploads go to Vercel Blob. |
+| `NEXT_PUBLIC_SITE_URL` | Public address of the site, no trailing slash. Used for canonical URLs, the sitemap and Open Graph tags. Redeploy after changing it. |
+| `ADMIN_USERNAME` | Admin login name (default `admin`). |
+| `ADMIN_PASSWORD` | Admin password, at least 10 characters. Changing it signs everyone out. |
+| `SESSION_SECRET` | Random string of 32+ characters used to sign admin sessions. |
+
+Login is disabled until `ADMIN_PASSWORD` and `SESSION_SECRET` are set — there is no default password. Environment variable changes only apply to new deployments.
+
+The database tables are created automatically the first time the app talks to an empty database.
+
+Deploy with `vercel deploy --prod`, or connect the GitHub repository to the Vercel project so every push to `main` deploys.
+
+## Writing blog posts
+
+1. Open `/admin` on the live site and sign in.
+2. **New post** → write the title and the article. The toolbar has headings, bold/italic, lists, quotes, links and images.
+3. In the side panel set the URL slug, excerpt, category, tags, cover image and the SEO title / meta description (a search-result preview updates as you type).
+4. **Save draft** keeps it private (use **Preview** to check it). **Publish** puts it live immediately; **Update** republishes changes.
+
+Publishing refreshes the affected pages, the sitemap, the RSS feed and `llms.txt` straight away — no redeploy needed.
+
+Uploaded images are resized to at most 1600px wide, converted to WebP, and stripped of metadata (including GPS location). Photos larger than about 4 MB are scaled down in the browser before upload, because Vercel rejects larger requests.
+
+Links to hosts listed in `AFFILIATE_HOSTS` (`lib/site.ts`) automatically get `rel="sponsored nofollow"`.
+
+## Local development
 
 Requires Node.js 20.9 or newer.
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in the values (see below)
+cp .env.example .env.local   # then fill in the values
 npm run dev                  # http://localhost:3000
 ```
 
-Production:
+With only the admin variables in `.env.local`, local development is **isolated from production**: posts and messages are JSON files in `content/` and uploads go to `content/uploads/`. Nothing you do locally touches the live site.
 
-```bash
-npm run build
-npm run start
-```
+To work against the production database and Blob store instead, add `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and `BLOB_READ_WRITE_TOKEN` to `.env.local` (`vercel env pull` fetches them). Be careful: posts you publish locally are then live.
 
-## Settings (`.env.local`)
+Note: `vercel link` and `vercel env pull` rewrite `.env.local` and may append lines to `.gitignore` — check both afterwards.
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Public address of the site, no trailing slash. Used for canonical URLs, the sitemap and Open Graph tags. Rebuild after changing it. |
-| `ADMIN_USERNAME` | Admin login name (default `admin`). |
-| `ADMIN_PASSWORD` | Admin password, at least 10 characters. Changing it signs everyone out. |
-| `SESSION_SECRET` | Random string of 32+ characters used to sign admin sessions. |
-| `CONTENT_DIR` | Optional. Where content is stored. Defaults to `./content`. |
+## Backups
 
-Login is disabled until `ADMIN_PASSWORD` and `SESSION_SECRET` are set — there is no default password.
-
-## Writing blog posts
-
-1. Open `/admin` and sign in.
-2. **New post** → write the title and the article. The toolbar has headings, bold/italic, lists, quotes, links and images.
-3. In the side panel set the URL slug, excerpt, category, tags, cover image and the SEO title / meta description (a search-result preview updates as you type).
-4. **Save draft** keeps it private (use **Preview** to check it). **Publish** puts it live immediately; **Update** republishes changes.
-
-Uploaded images are resized to at most 1600px wide, converted to WebP, and stripped of metadata (including GPS location).
-
-Links to hosts listed in `AFFILIATE_HOSTS` (`lib/site.ts`) automatically get `rel="sponsored nofollow"`.
-
-## Where content lives
-
-```
-content/
-  posts/      one JSON file per post (drafts and published)
-  uploads/    images uploaded through the editor
-  messages/   contact-form messages (git-ignored: they contain personal data)
-```
-
-**Back up this folder.** It is the whole CMS. Commit `content/posts` and `content/uploads` to git, or copy the folder regularly.
-
-## Hosting
-
-The admin panel writes to disk, so the site needs a **Node.js server with a persistent filesystem** — a VPS, a Node hosting plan, or a container with a mounted volume (point `CONTENT_DIR` at the volume).
-
-On serverless hosts with a read-only filesystem (for example Vercel), the public site works with the posts that were committed at build time, but saving from `/admin` will fail. To edit there, run the admin locally, commit `content/`, and redeploy — or replace the functions in `lib/storage.ts` with a database.
-
-Serve the site over HTTPS in production.
+The Turso database and the Blob store are the whole CMS — the site has no other copy of the posts. Check which backup and restore options your Turso plan includes (Vercel → Storage → `feetpicss-db` → open the Turso dashboard), and keep your own export of important posts if the plan does not cover it.
 
 ## SEO features
 
@@ -79,10 +78,13 @@ Serve the site over HTTPS in production.
 app/(site)/        public pages (shared header/footer)
 app/admin/         admin panel
 app/api/admin/     image upload endpoint
-app/uploads/       serves uploaded images
+app/urlset.xml/    the sitemap (served at /sitemap.xml via a rewrite — see the comment in the file)
+app/uploads/       serves locally stored uploads (development only)
 components/        UI components (components/admin = editor)
-lib/               content storage, auth, sanitizing, SEO helpers, server actions
+lib/store/         storage back ends: turso-store.ts (production), file-store.ts (local)
+lib/               auth, sanitizing, SEO helpers, media, server actions
 proxy.ts           redirects signed-out visitors away from /admin
+content/           local-development data (not used on Vercel)
 legacy-static/     the original single-file landing page, kept for reference
 ```
 

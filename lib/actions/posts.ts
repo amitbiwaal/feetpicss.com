@@ -2,6 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { requireAdmin } from "../auth";
+import { isUploadedImageUrl } from "../media-url";
 import {
   POSTS_TAG,
   RESERVED_SLUGS,
@@ -47,7 +48,7 @@ function parseCoverImage(value: unknown): PostImage | null {
   if (!value || typeof value !== "object") return null;
   const { url, alt, width, height } = value as Record<string, unknown>;
   // Only images that went through the upload route are accepted as covers.
-  if (typeof url !== "string" || !/^\/uploads\/[a-z0-9/-]+\.webp$/.test(url)) return null;
+  if (!isUploadedImageUrl(url)) return null;
   const w = Number(width);
   const h = Number(height);
   if (!Number.isInteger(w) || !Number.isInteger(h) || w <= 0 || h <= 0) return null;

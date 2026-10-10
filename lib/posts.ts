@@ -1,47 +1,18 @@
 import "server-only";
-import path from "node:path";
 import { cacheLife, cacheTag } from "next/cache";
 import { readingMinutes } from "./sanitize";
 import { slugify } from "./site";
-import { POSTS_DIR, deleteFile, isValidId, readJsonDir, readJsonFile, writeJsonFile } from "./storage";
+import { getStore } from "./store";
+import { isValidId } from "./storage";
+import type { Category, Post, PostSummary } from "./types";
 
-export type PostStatus = "draft" | "published";
-
-export type PostImage = { url: string; alt: string; width: number; height: number };
-
-export type Post = {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  /** Sanitized HTML. */
-  content: string;
-  coverImage: PostImage | null;
-  category: string;
-  tags: string[];
-  author: string;
-  status: PostStatus;
-  seoTitle: string;
-  seoDescription: string;
-  publishedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PostSummary = Omit<Post, "content"> & { readingMinutes: number };
-
-export type Category = { name: string; slug: string; count: number };
+export type { Category, Post, PostImage, PostStatus, PostSummary } from "./types";
 
 /** Every cached read below carries this tag; saving or deleting a post expires it. */
 export const POSTS_TAG = "posts";
 
 /** `/blog/page/…` and `/blog/category/…` are real routes, so a post can never claim these slugs. */
 export const RESERVED_SLUGS = new Set(["page", "category"]);
-
-function postFile(id: string): string {
-  if (!isValidId(id)) throw new Error("Invalid post id");
-  return path.join(POSTS_DIR, `${id}.json`);
-}
 
 function toSummary(post: Post): PostSummary {
   const { content, ...rest } = post;
@@ -55,21 +26,23 @@ function byNewest(a: { publishedAt: string | null; updatedAt: string }, b: typeo
 /* ---------- Uncached access: admin panel and mutations only ---------- */
 
 export async function readAllPosts(): Promise<Post[]> {
-  const posts = await readJsonDir<Post>(POSTS_DIR);
+  const posts = await getStore().listPosts();
   return posts.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function readPostById(id: string): Promise<Post | null> {
   if (!isValidId(id)) return null;
-  return readJsonFile<Post>(postFile(id));
+  return getStore().getPost(id);
 }
 
 export async function writePost(post: Post): Promise<void> {
-  await writeJsonFile(postFile(post.id), post);
+  if (!isValidId(post.id)) throw new Error("Invalid post id");
+  await getStore().savePost(post);
 }
 
 export async function removePost(id: string): Promise<void> {
-  await deleteFile(postFile(id));
+  if (!isValidId(id)) throw new Error("Invalid post id");
+  await getStore().deletePost(id);
 }
 
 /** Returns a slug no other post uses, appending -2, -3… when needed. */
@@ -86,7 +59,7 @@ export async function uniqueSlug(wanted: string, ownId: string): Promise<string>
 /* ---------- Cached access: everything the public site renders ---------- */
 
 async function loadPublished(): Promise<Post[]> {
-  const posts = await readJsonDir<Post>(POSTS_DIR);
+  const posts = await getStore().listPosts();
   return posts.filter((post) => post.status === "published" && post.publishedAt).sort(byNewest);
 }
 

@@ -40,14 +40,16 @@ export async function submitContactAction(
     return { status: "error", message: "Check the highlighted fields and try again.", errors };
   }
 
-  const ipKey = `contact:${await clientIp()}`;
-  if (blockedMinutes(ipKey, PER_IP_LIMIT, WINDOW_MS) || blockedMinutes("contact:all", GLOBAL_LIMIT, WINDOW_MS)) {
-    return { status: "error", message: "Too many messages sent from here. Try again later." };
-  }
-  recordAttempt(ipKey, WINDOW_MS);
-  recordAttempt("contact:all", WINDOW_MS);
-
   try {
+    const ipKey = `contact:${await clientIp()}`;
+    const [perIp, overall] = await Promise.all([
+      blockedMinutes(ipKey, PER_IP_LIMIT),
+      blockedMinutes("contact:all", GLOBAL_LIMIT),
+    ]);
+    if (perIp || overall) {
+      return { status: "error", message: "Too many messages sent from here. Try again later." };
+    }
+    await Promise.all([recordAttempt(ipKey, WINDOW_MS), recordAttempt("contact:all", WINDOW_MS)]);
     await addMessage({ name, email, subject, message });
   } catch (error) {
     console.error("Could not store contact message", error);

@@ -1,14 +1,6 @@
 import { getPublishedPosts } from "@/lib/posts";
 import { SITE, absoluteUrl } from "@/lib/site";
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
+import { escapeXml } from "@/lib/xml";
 
 export async function GET() {
   const posts = (await getPublishedPosts()).slice(0, 30);

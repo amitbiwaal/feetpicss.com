@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { savePostAction, type PostInput } from "@/lib/actions/posts";
 import type { PostImage, PostStatus } from "@/lib/posts";
 import { SITE, slugify } from "@/lib/site";
+import { prepareImage } from "./prepare-image";
 import { RichTextEditor, type UploadedImage } from "./RichTextEditor";
 
 type Props = {
@@ -22,10 +23,12 @@ const SEO_DESCRIPTION_MAX = 160;
 
 async function uploadImage(file: File): Promise<UploadedImage> {
   const body = new FormData();
-  body.append("file", file);
+  body.append("file", await prepareImage(file), "upload");
   const response = await fetch("/api/admin/upload", { method: "POST", body });
   const data = (await response.json().catch(() => null)) as (UploadedImage & { error?: string }) | null;
-  if (!response.ok || !data?.url) throw new Error(data?.error ?? "Upload failed. Try again.");
+  if (!response.ok || !data?.url) {
+    throw new Error(data?.error ?? (response.status === 413 ? "That image is too large." : "Upload failed. Try again."));
+  }
   return { url: data.url, width: data.width, height: data.height };
 }
 

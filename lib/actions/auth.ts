@@ -23,8 +23,7 @@ export async function loginAction(_previous: LoginState, formData: FormData): Pr
 
   const ipKey = `login:${await clientIp()}`;
   const wait = Math.max(
-    blockedMinutes(ipKey, PER_IP_LIMIT, WINDOW_MS),
-    blockedMinutes(GLOBAL_KEY, GLOBAL_LIMIT, WINDOW_MS),
+    ...(await Promise.all([blockedMinutes(ipKey, PER_IP_LIMIT), blockedMinutes(GLOBAL_KEY, GLOBAL_LIMIT)])),
   );
   if (wait > 0) {
     return { error: `Too many failed attempts. Try again in about ${wait} minute${wait === 1 ? "" : "s"}.` };
@@ -33,12 +32,11 @@ export async function loginAction(_previous: LoginState, formData: FormData): Pr
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!checkCredentials(username, password)) {
-    recordAttempt(ipKey, WINDOW_MS);
-    recordAttempt(GLOBAL_KEY, WINDOW_MS);
+    await Promise.all([recordAttempt(ipKey, WINDOW_MS), recordAttempt(GLOBAL_KEY, WINDOW_MS)]);
     return { error: "Wrong username or password." };
   }
 
-  clearAttempts(ipKey);
+  await clearAttempts(ipKey);
   await startSession();
   redirect("/admin");
 }

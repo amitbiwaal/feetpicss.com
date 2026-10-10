@@ -4,8 +4,8 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import path from "node:path";
 
 /**
- * All CMS data lives on disk under this folder (posts, contact messages, uploads).
- * Override with CONTENT_DIR when the app runs somewhere the project folder is read-only.
+ * Local-development storage: without Turso / Vercel Blob configured, posts, contact messages
+ * and uploads are kept on disk under this folder. Override the location with CONTENT_DIR.
  */
 export const CONTENT_DIR = process.env.CONTENT_DIR
   ? path.resolve(process.env.CONTENT_DIR)
@@ -21,7 +21,7 @@ export function newId(): string {
   return randomUUID();
 }
 
-/** Ids become file names, so anything that is not a UUID is rejected before touching the disk. */
+/** Ids are used as file names and database keys; anything that is not a UUID is rejected up front. */
 export function isValidId(id: unknown): id is string {
   return typeof id === "string" && ID_PATTERN.test(id);
 }

@@ -14,6 +14,8 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
+    "@tursodatabase/serverless": "^1.4.1",
+    "@vercel/blob": "^2.8.1",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
