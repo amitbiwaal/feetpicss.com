@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PostSummary } from "@/lib/posts";
 import { formatDate } from "@/lib/site";
+import { preconnectToImageHost } from "./hints";
 import { LogoMark } from "./Logo";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 
 export function PostCard({ post, heading: Heading = "h2", priority = false }: Props) {
   const href = `/blog/${post.slug}`;
+  if (priority) preconnectToImageHost(post.coverImage?.url);
   return (
     <article className="post-card">
       {post.coverImage ? (
@@ -25,6 +27,7 @@ export function PostCard({ post, heading: Heading = "h2", priority = false }: Pr
             width={post.coverImage.width}
             height={post.coverImage.height}
             loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : undefined}
             decoding="async"
           />
         </span>

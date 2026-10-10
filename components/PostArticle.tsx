@@ -4,10 +4,12 @@ import { readingMinutes, withHeadingAnchors } from "@/lib/sanitize";
 import { formatDate, slugify } from "@/lib/site";
 import { AffiliateLink } from "./AffiliateLink";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { preconnectToImageHost } from "./hints";
 
 /** The full article view. Shared by the public post page and the admin draft preview. */
 export function PostArticle({ post }: { post: Post }) {
   const { html, toc } = withHeadingAnchors(post.content);
+  preconnectToImageHost(post.coverImage?.url);
   const published = post.publishedAt ?? post.updatedAt;
   const showUpdated = post.updatedAt.slice(0, 10) > published.slice(0, 10);
   const category = slugify(post.category);
