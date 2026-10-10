@@ -1,0 +1,15 @@
+# robots.txt for https://feetpicss.com/
+User-agent: *
+Allow: /
+
+# AI / LLM crawlers welcome
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://feetpicss.com/sitemap.xml
